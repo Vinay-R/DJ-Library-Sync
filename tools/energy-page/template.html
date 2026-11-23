@@ -1,0 +1,297 @@
+<title>Energy Ratings</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a set-prep console. Playlist rail on the left (a select on phones), the chosen playlist's
+   tracks as rows sorted peak to chill, star buttons on the right of each row. */
+:root {
+  --bg: #eef0f2; --panel: #ffffff; --well: #e3e7eb; --line: #cfd6dd; --fg: #12171c; --muted: #58636e;
+  --accent: #2f5bd3; --accent-fg: #ffffff;
+  --e1: #3b7fc4; --e2: #2f9e8f; --e3: #b08a17; --e4: #d0661c; --e5: #d23a3a;
+  --font-display: "Barlow Condensed", "Arial Narrow", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --radius: 8px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0d1013; --panel: #151a1f; --well: #1d242b; --line: #2a333c; --fg: #e5eaef; --muted: #93a0ac;
+  --accent: #7d9bff; --accent-fg: #0b1430;
+  --e1: #6aa8e8; --e2: #4fc4b2; --e3: #e2bd4a; --e4: #f08d48; --e5: #f26b6b;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0d1013; --panel: #151a1f; --well: #1d242b; --line: #2a333c; --fg: #e5eaef; --muted: #93a0ac;
+  --accent: #7d9bff; --accent-fg: #0b1430;
+  --e1: #6aa8e8; --e2: #4fc4b2; --e3: #e2bd4a; --e4: #f08d48; --e5: #f26b6b;
+  color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font: 14.5px/1.45 var(--font-body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 64px; display: grid; gap: 18px; }
+h1 { font: 700 clamp(28px, 4vw, 38px)/1 var(--font-display); letter-spacing: .01em; text-transform: uppercase; margin: 0; text-wrap: balance; }
+.lede { color: var(--muted); margin: 6px 0 0; max-width: 70ch; }
+.scale { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.lvl { font: 600 12px var(--font-body); padding: 3px 9px; border-radius: 999px; color: #fff; }
+.lvl.l1 { background: var(--e1); } .lvl.l2 { background: var(--e2); } .lvl.l3 { background: var(--e3); }
+.lvl.l4 { background: var(--e4); } .lvl.l5 { background: var(--e5); }
+.notice { background: var(--well); border-left: 3px solid var(--e4); padding: 10px 14px; border-radius: 4px; }
+.layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 18px; align-items: start; }
+.rail { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px; display: grid; gap: 2px;
+  position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); max-height: calc(100vh - 24px); overflow-y: auto; }
+.rail h2 { font: 600 11.5px var(--font-body); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 10px 8px 4px; }
+.pl { all: unset; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
+.pl:hover { background: var(--well); }
+.pl[aria-current="true"] { background: var(--accent); color: var(--accent-fg); }
+.pl .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl .ct { font: 12px var(--font-mono); opacity: .8; font-variant-numeric: tabular-nums; }
+.pl:focus-visible, button:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#picker { display: none; font: 15px var(--font-body); color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; }
+.main { display: grid; gap: 12px; min-width: 0; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.bar h2 { font: 700 26px/1.1 var(--font-display); text-transform: uppercase; margin: 0; }
+.bar .sub { color: var(--muted); font-size: 13px; }
+.dist { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--well); min-width: 160px; flex: 0 1 240px; }
+.dist span { display: block; height: 100%; }
+.btn { font: 600 13px var(--font-body); border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 7px; padding: 6px 12px; cursor: pointer; }
+.btn:hover { border-color: var(--accent); } .btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tools label { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 13px; }
+.rows { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.row { display: grid; grid-template-columns: 6px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 9px 12px 9px 0; border-top: 1px solid var(--line); }
+.row:first-child { border-top: 0; }
+.row .heat { align-self: stretch; }
+.row .t { font-weight: 600; overflow-wrap: anywhere; }
+.row .a { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.row .meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--muted); margin-top: 2px; }
+.row .meta a { color: var(--accent); }
+.tag { font: 600 11px var(--font-body); padding: 1px 7px; border-radius: 999px; background: var(--well); color: var(--muted); white-space: nowrap; }
+.tag.yours { background: var(--accent); color: var(--accent-fg); }
+.stars { display: flex; gap: 2px; }
+.star { all: unset; cursor: pointer; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 6px; font-size: 20px; line-height: 1; color: var(--line); }
+.star:hover { background: var(--well); }
+.star.on { color: var(--c); }
+.star.ghost { color: color-mix(in srgb, var(--c) 45%, transparent); }
+.star:disabled { cursor: default; }
+.empty { padding: 18px; color: var(--muted); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; }
+  .rail { display: none; }
+  #picker { display: block; }
+  .row { grid-template-columns: 6px minmax(0, 1fr); }
+  .row .stars { grid-column: 2; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Energy Ratings</h1>
+    <p class="lede">Each playlist sorted from peak to chill by the audio analysis. Hollow stars are the guess; tap a star to set it. Your stars go into Music.app's rating, so rekordbox and the CDJs can sort by them. A track in several playlists is rated against the one you set it in.</p>
+    <div class="scale" aria-label="Energy scale">
+      <span class="lvl l1">1 Chill</span><span class="lvl l2">2 Warm</span><span class="lvl l3">3 Bridge</span><span class="lvl l4">4 Lift</span><span class="lvl l5">5 Peak</span>
+    </div>
+  </header>
+  <div id="notice" class="notice" hidden></div>
+  <div class="layout">
+    <nav class="rail" id="rail" aria-label="Playlists"></nav>
+    <section class="main">
+      <select id="picker" aria-label="Playlist"></select>
+      <div class="bar">
+        <div><h2 id="pl-name"></h2><div class="sub" id="pl-sub"></div></div>
+        <div class="dist" id="dist" aria-label="Energy mix of this playlist"></div>
+      </div>
+      <div class="tools">
+        <label><input type="checkbox" id="open-only"> Only tracks without your stars</label>
+        <button class="btn primary" id="accept">Keep the guesses for this playlist</button>
+        <button class="btn" id="export" hidden>Download ratings</button>
+      </div>
+      <div class="rows" id="rows"></div>
+    </section>
+  </div>
+</div>
+
+<script type="application/json" id="energy-data">__ENERGY_DATA__</script>
+<script>
+(() => {
+  const DATA = JSON.parse(document.getElementById("energy-data").textContent);
+  const NAMES = ["", "Chill", "Warm", "Bridge", "Lift", "Peak"];
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, attrs = {}, ...kids) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "class") n.className = v; else if (k === "style") n.setAttribute("style", v);
+      else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+      else if (v !== undefined && v !== null && v !== false) n.setAttribute(k, v === true ? "" : v);
+    }
+    for (const k of kids.flat()) if (k !== null && k !== undefined && k !== false) n.append(k.nodeType ? k : String(k));
+    return n;
+  };
+  const mmss = (ms) => ms == null ? "" : `${Math.floor(ms / 60000)}:${String(Math.round(ms / 1000) % 60).padStart(2, "0")}`;
+  const plName = Object.fromEntries(DATA.playlists.map((p) => [p.id, p.name]));
+  const shard = (id) => "ratings/" + id.slice(-1).toLowerCase() + "/items";
+
+  const choices = new Map();  // music id -> {stars, home}
+  let db = null, readOnly = false;
+  let current = null;
+  try { current = localStorage.getItem("energy-playlist"); } catch (e) {}
+  if (!DATA.playlists.some((p) => p.id === current)) current = DATA.playlists[0] && DATA.playlists[0].id;
+
+  function state(t) {
+    const c = choices.get(t.id);
+    if (c) return { stars: c.stars, kind: "set", home: c.home };
+    if (t.current_is_yours) return { stars: t.current, kind: "yours", home: t.home };
+    return { stars: null, kind: "guess", home: t.home };
+  }
+
+  async function choose(t, stars, playlistId) {
+    const prev = choices.get(t.id);
+    const next = prev && prev.stars === stars && prev.home === playlistId ? null : { stars, home: playlistId };
+    if (next) choices.set(t.id, next); else choices.delete(t.id);
+    render();
+    if (!db) return;
+    try {
+      const ref = db.collection(shard(t.id)).doc(t.id);
+      if (next) await ref.set({ stars, home: playlistId, decided_at: new Date().toISOString() }); else await ref.delete();
+    } catch (e) {
+      if (prev) choices.set(t.id, prev); else choices.delete(t.id);
+      if (e && (e.code === "permission_denied" || e.code === "invalid_argument")) readOnly = true;
+      notice(readOnly ? "This view can't save ratings. Ask the owner for Contributor access." : "Couldn't save that rating. Check your connection and try again.");
+      render();
+    }
+  }
+
+  function starRow(t, playlist) {
+    const s = state(t);
+    const shown = s.stars || t.guess || 0;
+    const ghost = !s.stars;
+    return el("div", { class: "stars", role: "group", "aria-label": `Energy for ${t.title}` },
+      [1, 2, 3, 4, 5].map((n) => el("button", {
+        class: "star" + (n <= shown ? (ghost ? " ghost" : " on") : ""),
+        style: `--c: var(--e${shown || 3})`,
+        disabled: readOnly,
+        title: `${n} – ${NAMES[n]}`,
+        "aria-label": `${n} stars, ${NAMES[n]}`,
+        "aria-pressed": String(!ghost && s.stars === n),
+        onclick: () => choose(t, n, playlist.id),
+      }, "★")));
+  }
+
+  function row(t, playlist) {
+    const s = state(t);
+    const level = s.stars || t.guess || 3;
+    const tags = [];
+    if (s.kind === "yours") tags.push(el("span", { class: "tag yours" }, "your stars"));
+    if (s.kind === "set") tags.push(el("span", { class: "tag yours" }, "set here"));
+    if (s.kind === "guess" && t.guess) tags.push(el("span", { class: "tag" }, `guess: ${NAMES[t.guess]}`));
+    if (s.home && s.home !== playlist.id) tags.push(el("span", { class: "tag" }, `rated in ${plName[s.home] || "another playlist"}`));
+    return el("div", { class: "row" },
+      el("span", { class: "heat", style: `background: var(--e${level})` }),
+      el("div", { style: "min-width:0" },
+        el("div", { class: "t" }, t.title || "Untitled"),
+        el("div", { class: "a" }, t.artist || ""),
+        el("div", { class: "meta" }, ...tags, t.duration_ms ? el("span", { class: "mono" }, mmss(t.duration_ms)) : null,
+          t.spotify ? el("a", { href: t.spotify, target: "_blank", rel: "noopener" }, "Listen on Spotify") : null)),
+      starRow(t, playlist));
+  }
+
+  function counts(p) {
+    const n = [0, 0, 0, 0, 0, 0]; let mine = 0;
+    for (const t of p.tracks) {
+      const s = state(t);
+      if (s.kind !== "guess") mine += 1;
+      n[s.stars || t.guess || 0] += 1;
+    }
+    return { n, mine };
+  }
+
+  function renderRail() {
+    const groups = [["DJ", "DJ"], ["Vibes", "Vibes"]];
+    const rail = $("rail"); rail.replaceChildren();
+    const picker = $("picker"); picker.replaceChildren();
+    for (const [g, label] of groups) {
+      const list = DATA.playlists.filter((p) => p.group === g);
+      if (!list.length) continue;
+      rail.append(el("h2", {}, label));
+      const og = el("optgroup", { label });
+      for (const p of list) {
+        const { mine } = counts(p);
+        rail.append(el("button", { class: "pl", "aria-current": String(p.id === current), onclick: () => select(p.id) },
+          el("span", { class: "nm" }, p.name), el("span", { class: "ct" }, `${mine}/${p.tracks.length}`)));
+        og.append(el("option", { value: p.id, selected: p.id === current }, `${p.name} (${mine}/${p.tracks.length})`));
+      }
+      picker.append(og);
+    }
+  }
+
+  function select(id) {
+    current = id;
+    try { localStorage.setItem("energy-playlist", id); } catch (e) {}
+    render();
+    window.scrollTo({ top: 0 });
+  }
+
+  function render() {
+    renderRail();
+    const p = DATA.playlists.find((x) => x.id === current);
+    if (!p) { $("rows").replaceChildren(el("div", { class: "empty" }, "No playlists in this export.")); return; }
+    const { n, mine } = counts(p);
+    $("pl-name").textContent = p.name;
+    $("pl-sub").textContent = `${p.group} · ${p.tracks.length} tracks · ${mine} with your stars`;
+    const total = n.slice(1).reduce((a, b) => a + b, 0) || 1;
+    $("dist").replaceChildren(...[5, 4, 3, 2, 1].map((k) => el("span", { title: `${n[k]} × ${NAMES[k]}`, style: `width:${(100 * n[k]) / total}%;background:var(--e${k})` })));
+    const openOnly = $("open-only").checked;
+    const list = p.tracks.filter((t) => !openOnly || state(t).kind === "guess");
+    $("accept").disabled = readOnly || !db || !p.tracks.some((t) => state(t).kind === "guess" && t.guess && (!t.home || t.home === p.id));
+    $("rows").replaceChildren(...(list.length ? list.map((t) => row(t, p)) :
+      [el("div", { class: "empty" }, openOnly ? "Every track here has your stars." : "This playlist has no tracks.")]));
+  }
+
+  async function acceptGuesses() {
+    const p = DATA.playlists.find((x) => x.id === current);
+    const btn = $("accept"); btn.disabled = true; btn.textContent = "Saving…";
+    for (const t of p.tracks) {
+      const s = state(t);
+      if (s.kind === "guess" && t.guess && (!t.home || t.home === p.id)) await choose(t, t.guess, p.id);
+    }
+    btn.textContent = "Keep the guesses for this playlist";
+    render();
+  }
+
+  function notice(text) { const n = $("notice"); n.textContent = text; n.hidden = !text; }
+
+  $("picker").addEventListener("change", (e) => select(e.target.value));
+  $("open-only").addEventListener("change", render);
+  $("accept").addEventListener("click", acceptGuesses);
+  render();
+
+  (async () => {
+    db = window.claude ? await window.claude.use("db") : null;
+    if (!db) { notice("Saving isn't available in this view, so stars last only until you close the page."); render(); return; }
+    const shards = "0123456789abcdef".split("");
+    const live = new Map(shards.map((s) => [s, new Map()]));
+    for (const s of shards) {
+      db.collection("ratings/" + s + "/items").limit(1000).onSnapshot((snap) => {
+        const m = new Map();
+        for (const doc of snap.docs) {
+          const v = doc.data();
+          if (v && Number.isInteger(v.stars) && v.stars >= 1 && v.stars <= 5) m.set(doc.id, { stars: v.stars, home: v.home || null });
+        }
+        live.set(s, m);
+        choices.clear();
+        for (const part of live.values()) for (const [k, v] of part) choices.set(k, v);
+        render();
+      }, () => notice("Lost the connection to saved ratings. Reload the page to see the latest."));
+    }
+    render();
+    const downloads = await window.claude.use("downloads");
+    if (downloads) {
+      const btn = $("export"); btn.hidden = false;
+      btn.addEventListener("click", async () => {
+        const out = [...choices].map(([music_id, v]) => ({ music_id, stars: v.stars, home: v.home }));
+        try { await downloads.save({ filename: "energy-ratings.json", data: JSON.stringify({ ratings: out }, null, 2) }); }
+        catch (e) { if (e && e.code !== "declined") notice("The download didn't start. Try again in a moment."); }
+      });
+    }
+  })();
+})();
+</script>

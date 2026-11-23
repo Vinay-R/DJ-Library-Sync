@@ -1,0 +1,21 @@
+# Copy to config.yaml. Relative paths resolve against this config file.
+data_dir: data
+country_code: US
+# Safe default for catalog-only matching. "user" selects optional TIDAL user OAuth.
+tidal_auth: client_credentials
+request_interval: 0.5
+# Stable Spotify playlist IDs; unknown playlists are listed for manual assignment.
+# Local audio folders checked read-only by `dj-sync local scan`; files are never changed.
+music_dirs: []
+# music_dirs:
+#   - ~/Music/Music/Media.localized/Music
+playlists: {}
+# playlists:
+#   YOUR_SPOTIFY_PLAYLIST_ID: DJ
+#   ANOTHER_SPOTIFY_PLAYLIST_ID: Vibes
+# Destination names are fixed in code. No Music.app operations exist in this phase.
+# Tidaler-driven downloads (see README). Paths are relative to this file or absolute.
+# tidaler_bin: .venv-tidaler/bin/tidaler
+# aiff_dir: ~/Music/Tidal-DL/AIFF
+# download_limit: 50
+# ffmpeg_bin: /opt/homebrew/bin/ffmpeg

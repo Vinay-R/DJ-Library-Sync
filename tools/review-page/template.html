@@ -1,0 +1,350 @@
+<title>TIDAL Match Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a working queue. Summary strip, tabs, then one card per Spotify track with its TIDAL candidates as a comparison list. */
+:root {
+  --bg: #f3f5f7; --surface: #ffffff; --sunken: #e9edf1; --line: #d5dce3;
+  --fg: #151a21; --muted: #5b6673; --accent: #0d7364; --accent-fg: #ffffff; --accent-soft: #d8efe9;
+  --ok: #1d7a3a; --ok-soft: #dcf1e2; --warn: #9a5b00; --warn-soft: #fbecd2; --bad: #b3261e; --bad-soft: #f9dedc;
+  --font-display: "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1317; --surface: #171c22; --sunken: #1f262e; --line: #2c353f;
+  --fg: #e6ebf0; --muted: #96a2ae; --accent: #4cc9b0; --accent-fg: #062520; --accent-soft: #143a33;
+  --ok: #6fd28f; --ok-soft: #173524; --warn: #f0b45a; --warn-soft: #3a2a12; --bad: #f2867d; --bad-soft: #3d1a17;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f1317; --surface: #171c22; --sunken: #1f262e; --line: #2c353f;
+  --fg: #e6ebf0; --muted: #96a2ae; --accent: #4cc9b0; --accent-fg: #062520; --accent-soft: #143a33;
+  --ok: #6fd28f; --ok-soft: #173524; --warn: #f0b45a; --warn-soft: #3a2a12; --bad: #f2867d; --bad-soft: #3d1a17;
+  color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--font-body); }
+.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 64px; display: grid; gap: 20px; }
+h1 { font: 700 clamp(26px, 4vw, 34px)/1.1 var(--font-display); margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+.lede { color: var(--muted); margin: 6px 0 0; max-width: 68ch; }
+.mono { font-family: var(--font-mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.stats { display: flex; flex-wrap: wrap; gap: 10px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 14px; min-width: 130px; }
+.stat b { display: block; font: 700 22px/1.1 var(--font-display); font-variant-numeric: tabular-nums; }
+.stat span { color: var(--muted); font-size: 12.5px; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.tabs { display: flex; gap: 4px; background: var(--sunken); padding: 4px; border-radius: 999px; flex-wrap: wrap; }
+.tab { border: 0; background: transparent; color: var(--muted); font: 600 13.5px var(--font-body); padding: 7px 14px; border-radius: 999px; cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--surface); color: var(--fg); box-shadow: 0 1px 2px rgb(0 0 0 / 0.12); }
+.tab .n { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-left: 4px; }
+select, input[type="search"], input[type="text"] { font: 14px var(--font-body); color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; min-width: 0; }
+input[type="search"] { flex: 1 1 220px; }
+button { font: 600 13px var(--font-body); }
+.btn { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.notice { background: var(--warn-soft); color: var(--fg); border-radius: var(--radius); padding: 10px 14px; font-size: 14px; }
+.list { display: grid; gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; display: grid; gap: 12px; min-width: 0; }
+.card.decided { border-color: var(--accent); }
+.head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; align-items: flex-start; }
+.title { font: 600 16.5px/1.3 var(--font-body); margin: 0; overflow-wrap: anywhere; }
+.title a { color: inherit; text-decoration: none; } .title a:hover { text-decoration: underline; }
+.artists { color: var(--muted); overflow-wrap: anywhere; }
+.meta { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--muted); font-size: 13px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--sunken); color: var(--muted); white-space: nowrap; }
+.chip.ok { background: var(--ok-soft); color: var(--ok); } .chip.warn { background: var(--warn-soft); color: var(--warn); } .chip.bad { background: var(--bad-soft); color: var(--bad); } .chip.accent { background: var(--accent-soft); color: var(--accent); }
+.cands { display: grid; gap: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.cand { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; padding: 10px 12px; border-top: 1px solid var(--line); align-items: center; }
+.cand:first-child { border-top: 0; }
+.cand.picked { background: var(--accent-soft); }
+.cand .name { font-weight: 600; overflow-wrap: anywhere; }
+.cand .name a { color: inherit; }
+.cand .sub { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.cand .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.empty { color: var(--muted); padding: 10px 12px; font-size: 14px; }
+.foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.manual { display: flex; gap: 6px; flex-wrap: wrap; flex: 1 1 320px; }
+.manual input { flex: 1 1 200px; }
+.status { font-size: 13px; color: var(--accent); font-weight: 600; }
+.more { justify-self: center; }
+.tablewrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; padding: 8px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+th { font: 600 12px var(--font-body); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); border-top: 0; background: var(--sunken); position: sticky; top: 0; }
+td .sub { color: var(--muted); }
+.help { color: var(--muted); font-size: 13.5px; max-width: 75ch; margin: 0; }
+@media (max-width: 560px) { .cand { grid-template-columns: 1fr; } .cand .acts { justify-content: flex-start; } }
+@media (prefers-reduced-motion: no-preference) { .card { transition: border-color .15s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>TIDAL Match Review</h1>
+    <p class="lede">Spotify tracks the sync could not match on its own. Pick the right TIDAL track or paste a TIDAL link. If you already have the file in Music.app, or don't want the song, say so and it leaves the queue without being added to TIDAL. Choices save as you go; Claude imports them on the next sync.</p>
+  </header>
+  <section class="stats" id="stats" aria-label="Summary"></section>
+  <div id="notice" class="notice" hidden></div>
+  <nav class="bar">
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tab-review" data-tab="review" aria-selected="true">Needs a decision<span class="n" id="n-review"></span></button>
+      <button class="tab" role="tab" id="tab-done" data-tab="done" aria-selected="false">Decided<span class="n" id="n-done"></span></button>
+      <button class="tab" role="tab" id="tab-auto" data-tab="auto" aria-selected="false">Auto-resolved releases<span class="n" id="n-auto"></span></button>
+    </div>
+    <button class="btn" id="export" hidden>Download decisions</button>
+  </nav>
+  <div class="bar" id="filters">
+    <input type="search" id="q" placeholder="Search title, artist or playlist" aria-label="Search">
+    <select id="kind" aria-label="Problem type"></select>
+    <select id="disk" aria-label="Local files">
+      <option value="">On disk or not</option><option value="found">Already on your disk</option><option value="missing">Not on your disk</option>
+    </select>
+    <select id="group" aria-label="Folder">
+      <option value="">DJ and Vibes</option><option value="DJ">DJ only</option><option value="Vibes">Vibes only</option>
+    </select>
+  </div>
+  <main id="main" class="list"></main>
+</div>
+
+<script type="application/json" id="review-data">__REVIEW_DATA__</script>
+<script>
+(() => {
+  const DATA = JSON.parse(document.getElementById("review-data").textContent);
+  const decisions = new Map();          // spotify id -> {decision, tidal_id}
+  let db = null, tab = "review", shown = 40, readOnly = false;
+  try { const t = localStorage.getItem("review-tab"); if (t) tab = t; } catch (e) {}
+
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, attrs = {}, ...kids) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "class") n.className = v; else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+      else if (v !== undefined && v !== null && v !== false) n.setAttribute(k, v === true ? "" : v);
+    }
+    for (const k of kids.flat()) if (k !== null && k !== undefined && k !== false) n.append(k.nodeType ? k : String(k));
+    return n;
+  };
+  const mmss = (ms) => ms == null ? "—" : `${Math.floor(ms / 60000)}:${String(Math.round(ms / 1000) % 60).padStart(2, "0")}`;
+  const year = (d) => d ? d : "no date";
+
+  function kindOf(item) {
+    if (item.spotify.unavailable_in_spotify && !item.candidates.length) return "unavailable";
+    if (!item.candidates.length) return "none";
+    const top = item.candidates[0];
+    if (top.isrc && top.isrc === item.spotify.isrc && top.duration_ms != null && item.spotify.duration_ms != null &&
+      Math.abs(top.duration_ms - item.spotify.duration_ms) <= 3000) return "same";
+    const notes = item.candidates.flatMap((c) => c.notes).join(" ");
+    if (item.reason.startsWith("Multiple")) return "multiple";
+    if (/ISRC differs/.test(notes)) return "isrc";
+    if (/version conflict/.test(notes)) return "version";
+    if (/explicit/.test(notes)) return "explicit";
+    if (/title or artist/.test(notes)) return "text";
+    return "other";
+  }
+  const LABELS = {
+    match: "Choice saved", no_match: "Marked: not on TIDAL", local: "Marked: already in Music.app", skip: "Skipped",
+  };
+  const KINDS = {
+    "": "All problem types", same: "Same recording, label differs", isrc: "Different ISRC", version: "Version or mix label", explicit: "Explicit vs clean",
+    text: "Title or artist differs", multiple: "Several similar candidates", none: "Nothing found on TIDAL",
+    unavailable: "Greyed out on Spotify", other: "Other",
+  };
+  DATA.items.forEach((i) => { i.kind = kindOf(i); i.hay = [i.spotify.title, ...i.spotify.artists, ...i.playlists].join(" ").toLowerCase(); });
+  DATA.auto_resolved.forEach((i) => { i.hay = [i.spotify.title, ...i.spotify.artists, ...i.playlists].join(" ").toLowerCase(); });
+  const present = new Set(DATA.items.map((i) => i.kind));
+  for (const [k, label] of Object.entries(KINDS)) if (!k || present.has(k)) $("kind").append(el("option", { value: k }, label));
+
+  function filtered(list) {
+    const q = $("q").value.trim().toLowerCase(), kind = $("kind").value, group = $("group").value, disk = $("disk").value;
+    return list.filter((i) => (!q || i.hay.includes(q)) && (!kind || i.kind === kind) &&
+      (!disk || tab === "auto" || (disk === "found") === Boolean(i.local)) &&
+      (!group || i.playlists.some((p) => p.startsWith(group + " / "))));
+  }
+
+  function chipsFor(c, src) {
+    const chips = [];
+    chips.push(c.isrc && src.isrc && c.isrc === src.isrc ? el("span", { class: "chip ok" }, "same ISRC") :
+      c.isrc ? el("span", { class: "chip bad" }, "different ISRC") : el("span", { class: "chip" }, "no ISRC"));
+    if (c.duration_ms != null && src.duration_ms != null) {
+      const d = Math.round((c.duration_ms - src.duration_ms) / 1000);
+      chips.push(el("span", { class: "chip " + (Math.abs(d) <= 3 ? "ok" : "warn") }, d === 0 ? "same length" : `${d > 0 ? "+" : ""}${d}s`));
+    }
+    if (c.explicit != null && src.explicit != null && c.explicit !== src.explicit) chips.push(el("span", { class: "chip warn" }, c.explicit ? "explicit" : "clean"));
+    for (const n of c.notes) {
+      const m = n.match(/^version conflict: (.*) vs (.*)$/);
+      if (m) chips.push(el("span", { class: "chip warn" }, `version: ${m[2]}`));
+      if (/unavailable in selected/.test(n)) chips.push(el("span", { class: "chip bad" }, "not streamable in US"));
+    }
+    if (c.eligible) chips.push(el("span", { class: "chip accent" }, "passes all checks"));
+    return chips;
+  }
+
+  async function decide(id, body) {
+    const prev = decisions.get(id);
+    if (body) decisions.set(id, body); else decisions.delete(id);
+    render();
+    if (!db) return;
+    try {
+      const ref = db.collection("decisions").doc(id);
+      if (body) await ref.set({ ...body, decided_at: new Date().toISOString() }); else await ref.delete();
+    } catch (e) {
+      if (prev) decisions.set(id, prev); else decisions.delete(id);
+      showNotice(e && e.code === "invalid_argument" ? "This view can't save decisions. Ask the owner for Contributor access." :
+        "Couldn't save that choice. Check your connection and try again.");
+      if (e && e.code === "invalid_argument") readOnly = true;
+      render();
+    }
+  }
+
+  function tidalId(text) {
+    const m = String(text).trim().match(/(?:tidal\.com\/(?:browse\/)?track\/)?(\d{1,20})(?:[/?#].*)?$/);
+    return m ? m[1] : null;
+  }
+
+  function card(item) {
+    const s = item.spotify, d = decisions.get(s.id);
+    const head = el("div", { class: "head" },
+      el("div", {},
+        el("h2", { class: "title" }, el("a", { href: s.url, target: "_blank", rel: "noopener" }, s.title)),
+        el("div", { class: "artists" }, s.artists.join(", ")),
+        el("div", { class: "meta" },
+          el("span", {}, s.album || "—"), el("span", { class: "mono" }, year(s.released)),
+          el("span", { class: "mono" }, mmss(s.duration_ms)), el("span", { class: "mono" }, s.isrc || "no ISRC"),
+          s.explicit ? el("span", {}, "explicit") : null),
+        item.local ? el("div", { class: "meta", style: "margin-top:4px" },
+          el("span", { class: "chip ok" }, "On your disk"),
+          el("span", { class: "mono", title: item.local.path }, item.local.path.split("/").slice(-2).join("/")),
+          el("span", { class: "mono" }, `${mmss(item.local.duration_ms)}${item.local.duration_ms != null && s.duration_ms != null ?
+            ` (${Math.round((item.local.duration_ms - s.duration_ms) / 1000) >= 0 ? "+" : ""}${Math.round((item.local.duration_ms - s.duration_ms) / 1000)}s)` : ""}`)) : null),
+      el("div", { class: "chips" },
+        el("span", { class: "chip " + (item.kind === "none" || item.kind === "unavailable" ? "bad" : "warn") }, KINDS[item.kind]),
+        s.unavailable_in_spotify ? el("span", { class: "chip" }, "greyed out on Spotify") : null,
+        ...item.playlists.map((p) => el("span", { class: "chip" }, p))));
+    const cands = item.candidates.length ? el("div", { class: "cands" }, item.candidates.map((c) => {
+      const picked = d && d.decision === "match" && d.tidal_id === c.id;
+      return el("div", { class: "cand" + (picked ? " picked" : "") },
+        el("div", {},
+          el("div", { class: "name" }, el("a", { href: c.url, target: "_blank", rel: "noopener" }, c.title + (c.version ? ` (${c.version})` : ""))),
+          el("div", { class: "sub" }, `${c.artists.join(", ")} · ${c.album || "—"} · `, el("span", { class: "mono" }, `${year(c.released)} · ${mmss(c.duration_ms)}`)),
+          el("div", { class: "chips", style: "margin-top:6px" }, chipsFor(c, s))),
+        el("div", { class: "acts" },
+          el("button", { class: "btn" + (picked ? " primary" : ""), disabled: readOnly, "aria-pressed": picked ? "true" : "false",
+            onclick: () => decide(s.id, picked ? null : { decision: "match", tidal_id: c.id }) }, picked ? "Chosen" : "Use this")));
+    })) : el("div", { class: "cands" }, el("div", { class: "empty" }, "TIDAL returned no candidates. Search tidal.com and paste a track link below if you find it."));
+    const input = el("input", { type: "text", id: "link-" + s.id, placeholder: "Paste a TIDAL track link or ID", "aria-label": "TIDAL track link for " + s.title, disabled: readOnly });
+    const manual = el("form", { class: "manual", onsubmit: (e) => {
+      e.preventDefault();
+      const id = tidalId(input.value);
+      if (!id) { input.setCustomValidity("That isn't a TIDAL track link or numeric ID."); input.reportValidity(); return; }
+      input.setCustomValidity(""); decide(s.id, { decision: "match", tidal_id: id });
+    } }, input, el("button", { class: "btn", type: "submit", disabled: readOnly }, "Use link"));
+    const status = d ? el("span", { class: "status" }, d.decision !== "match" ? LABELS[d.decision] :
+      item.candidates.some((c) => c.id === d.tidal_id) ? LABELS.match : `Using TIDAL track ${d.tidal_id}`) : null;
+    const choice = (decision, label, hint) => el("button", { class: "btn", disabled: readOnly, title: hint,
+      onclick: () => decide(s.id, { decision, tidal_id: null }) }, label);
+    const foot = el("div", { class: "foot" }, manual,
+      el("div", { class: "acts", style: "display:flex;gap:8px;align-items:center;flex-wrap:wrap" }, status,
+        d ? el("button", { class: "btn", disabled: readOnly, onclick: () => decide(s.id, null) }, "Undo") : [
+          choice("local", "Already in Music.app", "You have this file locally; nothing is added to TIDAL"),
+          choice("skip", "Skip", "Leave this song out of syncing"),
+          choice("no_match", "Not on TIDAL", "TIDAL doesn't have it; you may want to get the file another way"),
+        ]));
+    return el("article", { class: "card" + (d ? " decided" : "") }, head, cands, foot);
+  }
+
+  function autoTable(list) {
+    if (!list.length) return el("p", { class: "help" }, "No releases matched the search.");
+    return el("div", {},
+      el("p", { class: "help", style: "margin-bottom:12px" }, "These tracks had several TIDAL entries for the identical recording: same ISRC, title, version, explicit flag, and length within 3 seconds. The sync picked the release matching Spotify's album, otherwise the earliest release. They were added to TIDAL automatically; nothing to do here unless one looks wrong."),
+      el("div", { class: "tablewrap" }, el("table", {},
+        el("thead", {}, el("tr", {}, el("th", {}, "Spotify"), el("th", {}, "TIDAL choice"), el("th", {}, "Release chosen"), el("th", {}, "Copies"), el("th", {}, "Playlists"))),
+        el("tbody", {}, list.map((i) => el("tr", {},
+          el("td", {}, el("a", { href: i.spotify.url, target: "_blank", rel: "noopener" }, i.spotify.title), el("div", { class: "sub" }, i.spotify.artists.join(", "))),
+          el("td", {}, el("a", { href: i.tidal.url, target: "_blank", rel: "noopener" }, i.tidal.title + (i.tidal.version ? ` (${i.tidal.version})` : "")), el("div", { class: "sub" }, i.tidal.artists.join(", "))),
+          el("td", {}, i.tidal.album || "—", el("div", { class: "sub mono" }, year(i.tidal.released))),
+          el("td", { class: "mono" }, String(i.alternatives)),
+          el("td", {}, i.playlists.join(", "))))))));
+  }
+
+  function decidedBreakdown(done) {
+    const n = { match: 0, local: 0, skip: 0, no_match: 0 };
+    for (const i of done) n[decisions.get(i.spotify.id).decision] += 1;
+    const parts = [n.match && `${n.match} matched`, n.local && `${n.local} in Music.app`, n.skip && `${n.skip} skipped`, n.no_match && `${n.no_match} not on TIDAL`].filter(Boolean);
+    return parts.length ? `decided: ${parts.join(", ")}` : "decided so far";
+  }
+
+  function render() {
+    const open = DATA.items.filter((i) => !decisions.has(i.spotify.id));
+    const done = DATA.items.filter((i) => decisions.has(i.spotify.id));
+    $("n-review").textContent = open.length; $("n-done").textContent = done.length; $("n-auto").textContent = DATA.auto_resolved.length;
+    $("stats").replaceChildren(
+      el("div", { class: "stat" }, el("b", {}, open.length), el("span", {}, "need a decision")),
+      el("div", { class: "stat" }, el("b", {}, done.length), el("span", {}, decidedBreakdown(done))),
+      el("div", { class: "stat" }, el("b", {}, DATA.auto_resolved.length), el("span", {}, "auto-resolved releases")),
+      el("div", { class: "stat" }, el("b", {}, DATA.matched_total), el("span", {}, "matched automatically")));
+    for (const b of document.querySelectorAll(".tab")) b.setAttribute("aria-selected", String(b.dataset.tab === tab));
+    $("kind").disabled = tab === "auto";
+    const main = $("main");
+    if (tab === "auto") { main.replaceChildren(autoTable(filtered(DATA.auto_resolved))); return; }
+    const list = filtered(tab === "review" ? open : done);
+    if (!list.length) {
+      main.replaceChildren(el("p", { class: "help" }, tab === "review" ? (open.length ? "Nothing matches these filters." : "Every track has a decision. Tell Claude you're done and it will import them.") : "No decisions yet. Choose a TIDAL track on a card in Needs a decision."));
+      return;
+    }
+    const bulk = tab !== "review" || readOnly || !db ? null :
+      $("kind").value === "same" ? el("div", { class: "bar" }, el("button", { class: "btn primary", id: "bulk-same", onclick: () => bulkSame(list) },
+        `Use the top pick for all ${list.length}`),
+        el("span", { class: "help" }, "Each top pick has the same ISRC and length as the Spotify track; only a label differs (explicit flag, “Original Mix”, artist spelling). Scan the list first; Undo works per card.")) :
+      $("disk").value === "found" ? el("div", { class: "bar" }, el("button", { class: "btn primary", id: "bulk-local", onclick: () => bulkLocal(list) },
+        `Mark all ${list.length} as Already in Music.app`),
+        el("span", { class: "help" }, "Each of these has a file on your disk with the same title, artist, version and length.")) : null;
+    main.replaceChildren(...(bulk ? [bulk] : []), ...list.slice(0, shown).map(card),
+      list.length > shown ? el("button", { class: "btn more", onclick: () => { shown += 40; render(); } }, `Show more (${list.length - shown} left)`) : "");
+  }
+
+  async function bulkLocal(list) {
+    const btn = $("bulk-local"); if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+    for (const i of list) if (!decisions.has(i.spotify.id)) await decide(i.spotify.id, { decision: "local", tidal_id: null });
+  }
+
+  async function bulkSame(list) {
+    const btn = $("bulk-same"); if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+    for (const i of list) if (!decisions.has(i.spotify.id)) await decide(i.spotify.id, { decision: "match", tidal_id: i.candidates[0].id });
+  }
+
+  function showNotice(text) { const n = $("notice"); n.textContent = text; n.hidden = !text; }
+
+  for (const b of document.querySelectorAll(".tab")) b.addEventListener("click", () => {
+    tab = b.dataset.tab; shown = 40; try { localStorage.setItem("review-tab", tab); } catch (e) {} render();
+  });
+  for (const id of ["q", "kind", "group", "disk"]) $(id).addEventListener("input", () => { shown = 40; render(); });
+  render();
+
+  (async () => {
+    db = window.claude ? await window.claude.use("db") : null;
+    if (!db) {
+      showNotice("Saving isn't available in this view, so choices last only until you close the page.");
+      return;
+    }
+    db.collection("decisions").limit(1000).onSnapshot((snap) => {
+      decisions.clear();
+      for (const doc of snap.docs) {
+        const v = doc.data();
+        if (v && LABELS[v.decision]) decisions.set(doc.id, { decision: v.decision, tidal_id: v.decision === "match" ? (v.tidal_id || null) : null });
+      }
+      render();
+    }, () => showNotice("Lost the connection to saved decisions. Reload the page to see the latest."));
+    const downloads = await window.claude.use("downloads");
+    if (downloads) {
+      const btn = $("export"); btn.hidden = false;
+      btn.addEventListener("click", async () => {
+        const out = [...decisions].map(([spotify_id, v]) => ({ spotify_id, ...v }));
+        try { await downloads.save({ filename: "tidal-review-decisions.json", data: JSON.stringify({ decisions: out }, null, 2) }); }
+        catch (e) { if (e && e.code !== "declined") showNotice("The download didn't start. Try again in a moment."); }
+      });
+    }
+  })();
+})();
+</script>
